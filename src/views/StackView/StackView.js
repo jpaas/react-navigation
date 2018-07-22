@@ -3,7 +3,6 @@ import { NativeModules } from 'react-native';
 
 import StackViewLayout from './StackViewLayout';
 import Transitioner from '../Transitioner';
-import NavigationActions from '../../NavigationActions';
 import StackActions from '../../routers/StackActions';
 import TransitionConfigs from './StackViewTransitionConfigs';
 
@@ -25,10 +24,14 @@ class StackView extends React.Component {
         screenProps={this.props.screenProps}
         navigation={this.props.navigation}
         descriptors={this.props.descriptors}
-        onTransitionStart={this.props.onTransitionStart}
+        onTransitionStart={
+          this.props.onTransitionStart ||
+          this.props.navigationConfig.onTransitionStart
+        }
         onTransitionEnd={(transition, lastTransition) => {
           const { navigationConfig, navigation } = this.props;
-          const { onTransitionEnd } = navigationConfig;
+          const onTransitionEnd =
+            this.props.onTransitionEnd || navigationConfig.onTransitionEnd;
           if (transition.navigation.state.isTransitioning) {
             navigation.dispatch(
               StackActions.completeTransition({

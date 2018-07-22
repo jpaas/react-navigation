@@ -39,6 +39,11 @@ module.exports = {
     return require('./routers/SwitchRouter').default;
   },
 
+  // NavigationEvents
+  get NavigationEvents() {
+    return require('./views/NavigationEvents').default;
+  },
+
   // HOCs
   get withNavigation() {
     return require('./views/withNavigation').default;

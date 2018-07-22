@@ -21,7 +21,7 @@ import withOrientation from '../withOrientation';
 import { NavigationProvider } from '../NavigationContext';
 
 import TransitionConfigs from './StackViewTransitionConfigs';
-import * as ReactNativeFeatures from '../../utils/ReactNativeFeatures';
+import { supportsImprovedSpringAnimation } from '../../utils/ReactNativeFeatures';
 
 const emptyFunction = () => {};
 
@@ -33,6 +33,12 @@ const IS_IPHONE_X =
   (WINDOW_HEIGHT === 812 || WINDOW_WIDTH === 812);
 
 const EaseInOut = Easing.inOut(Easing.ease);
+
+/**
+ * Enumerate possible values for validation
+ */
+const HEADER_LAYOUT_PRESET_VALUES = ['center', 'left'];
+const HEADER_TRANSITION_PRESET_VALUES = ['uikit', 'fade-in-place'];
 
 /**
  * The max duration of the card animation in milliseconds after released gesture.
@@ -68,6 +74,20 @@ const animatedSubscribeValue = animatedValue => {
   }
 };
 
+const getDefaultHeaderHeight = isLandscape => {
+  if (Platform.OS === 'ios') {
+    if (isLandscape && !Platform.isPad) {
+      return 32;
+    } else if (IS_IPHONE_X) {
+      return 88;
+    } else {
+      return 64;
+    }
+  } else {
+    return 56;
+  }
+};
+
 class StackViewLayout extends React.Component {
   /**
    * Used to identify the starting point of the position when the gesture starts, such that it can
@@ -89,14 +109,28 @@ class StackViewLayout extends React.Component {
    */
   _immediateIndex = null;
 
-  state = {
-    // Used when card's header is null and mode is float to make switch animation work correctly
-    floatingHeaderHeight: 0,
-  };
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      // Used when card's header is null and mode is float to make transition
+      // between screens with headers and those without headers smooth.
+      // This is not a great heuristic here. We don't know synchronously
+      // on mount what the header height is so we have just used the most
+      // common cases here.
+      floatingHeaderHeight: getDefaultHeaderHeight(props.isLandscape),
+    };
+  }
 
   _renderHeader(scene, headerMode) {
     const { options } = scene.descriptor;
     const { header } = options;
+
+    if (__DEV__ && typeof header === 'string') {
+      throw new Error(
+        `Invalid header value: "${header}". The header option must be a valid React component or null, not a string.`
+      );
+    }
 
     if (header === null && headerMode === 'screen') {
       return null;
@@ -119,7 +153,7 @@ class StackViewLayout extends React.Component {
     const {
       mode,
       transitionProps,
-      prevTransitionProps,
+      lastTransitionProps,
       ...passProps
     } = this.props;
 
@@ -131,6 +165,8 @@ class StackViewLayout extends React.Component {
           scene,
           mode: headerMode,
           transitionPreset: this._getHeaderTransitionPreset(),
+          layoutPreset: this._getHeaderLayoutPreset(),
+          backTitleVisible: this._getheaderBackTitleVisible(),
           leftInterpolator: headerLeftInterpolator,
           titleInterpolator: headerTitleInterpolator,
           rightInterpolator: headerRightInterpolator,
@@ -154,10 +190,7 @@ class StackViewLayout extends React.Component {
   }
 
   _reset(resetToIndex, duration) {
-    if (
-      Platform.OS === 'ios' &&
-      ReactNativeFeatures.supportsImprovedSpringAnimation()
-    ) {
+    if (Platform.OS === 'ios' && supportsImprovedSpringAnimation()) {
       Animated.spring(this.props.transitionProps.position, {
         toValue: resetToIndex,
         stiffness: 5000,
@@ -197,10 +230,7 @@ class StackViewLayout extends React.Component {
       }
     };
 
-    if (
-      Platform.OS === 'ios' &&
-      ReactNativeFeatures.supportsImprovedSpringAnimation()
-    ) {
+    if (Platform.OS === 'ios' && supportsImprovedSpringAnimation()) {
       Animated.spring(position, {
         toValue,
         stiffness: 5000,
@@ -236,7 +266,7 @@ class StackViewLayout extends React.Component {
         return false;
       }
 
-      position.stopAnimation((value: number) => {
+      position.stopAnimation(value => {
         this._isResponding = true;
         this._gestureStartValue = value;
       });
@@ -244,7 +274,7 @@ class StackViewLayout extends React.Component {
     },
     onMoveShouldSetPanResponder: (event, gesture) => {
       const {
-        transitionProps: { navigation, position, layout, scene, scenes },
+        transitionProps: { navigation, layout, scene },
         mode,
       } = this.props;
       const { index } = navigation.state;
@@ -407,6 +437,7 @@ class StackViewLayout extends React.Component {
   render() {
     let floatingHeader = null;
     const headerMode = this._getHeaderMode();
+
     if (headerMode === 'float') {
       const { scene } = this.props.transitionProps;
       floatingHeader = (
@@ -416,18 +447,10 @@ class StackViewLayout extends React.Component {
       );
     }
     const {
-      transitionProps: { navigation, position, layout, scene, scenes },
+      transitionProps: { scene, scenes },
       mode,
     } = this.props;
-    const { index } = navigation.state;
-    const isVertical = mode === 'modal';
     const { options } = scene.descriptor;
-    const gestureDirection = options.gestureDirection;
-
-    const gestureDirectionInverted =
-      typeof gestureDirection === 'string'
-        ? gestureDirection === 'inverted'
-        : I18nManager.isRTL;
 
     const gesturesEnabled =
       typeof options.gesturesEnabled === 'boolean'
@@ -462,6 +485,40 @@ class StackViewLayout extends React.Component {
     return 'float';
   }
 
+  _getHeaderLayoutPreset() {
+    const { headerLayoutPreset } = this.props;
+    if (headerLayoutPreset) {
+      if (__DEV__) {
+        if (
+          this._getHeaderTransitionPreset() === 'uitkit' &&
+          headerLayoutPreset === 'left' &&
+          Platform.OS === 'ios'
+        ) {
+          console.warn(
+            `headerTransitionPreset with the value 'ui-kit' is incompatible with headerLayoutPreset 'left'`
+          );
+        }
+      }
+      if (HEADER_LAYOUT_PRESET_VALUES.includes(headerLayoutPreset)) {
+        return headerLayoutPreset;
+      }
+
+      if (__DEV__) {
+        console.error(
+          `Invalid configuration applied for headerLayoutPreset - expected one of ${HEADER_LAYOUT_PRESET_VALUES.join(
+            ', '
+          )} but received ${JSON.stringify(headerLayoutPreset)}`
+        );
+      }
+    }
+
+    if (Platform.OS === 'android') {
+      return 'left';
+    } else {
+      return 'center';
+    }
+  }
+
   _getHeaderTransitionPreset() {
     // On Android or with header mode screen, we always just use in-place,
     // we ignore the option entirely (at least until we have other presets)
@@ -469,12 +526,28 @@ class StackViewLayout extends React.Component {
       return 'fade-in-place';
     }
 
-    // TODO: validations: 'fade-in-place' or 'uikit' are valid
-    if (this.props.headerTransitionPreset) {
-      return this.props.headerTransitionPreset;
-    } else {
-      return 'fade-in-place';
+    const { headerTransitionPreset } = this.props;
+    if (headerTransitionPreset) {
+      if (HEADER_TRANSITION_PRESET_VALUES.includes(headerTransitionPreset)) {
+        return headerTransitionPreset;
+      }
+
+      if (__DEV__) {
+        console.error(
+          `Invalid configuration applied for headerTransitionPreset - expected one of ${HEADER_TRANSITION_PRESET_VALUES.join(
+            ', '
+          )} but received ${JSON.stringify(headerTransitionPreset)}`
+        );
+      }
     }
+
+    return 'fade-in-place';
+  }
+
+  _getheaderBackTitleVisible() {
+    const { headerBackTitleVisible } = this.props;
+
+    return headerBackTitleVisible;
   }
 
   _renderInnerScene(scene) {
@@ -512,13 +585,14 @@ class StackViewLayout extends React.Component {
     return TransitionConfigs.getTransitionConfig(
       this.props.transitionConfig,
       this.props.transitionProps,
-      this.props.prevTransitionProps,
+      this.props.lastTransitionProps,
       isModal
     );
   };
 
   _renderCard = scene => {
     const { screenInterpolator } = this._getTransitionConfig();
+
     const style =
       screenInterpolator &&
       screenInterpolator({ ...this.props.transitionProps, scene });
