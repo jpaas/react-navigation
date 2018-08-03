@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [2.10.0] - [2018-08-02](https://github.com/react-navigation/react-navigation/releases/tag/2.10.0)
+### Added
+- `lazy` and `optimizationsEnabled` options to `createMaterialTopTabNavigator` (react-navigation-tabs@0.6.0)
+
+### Fixed
+- Android back button in stack with drawer closes drawer properly if open (react-navigation-drawer@0.5.0)
+- Fixes bug where `null` doesn't work in routerOptions `paths` object for deeplinking ([#4791](https://github.com/react-navigation/react-navigation/pull/4791))
+
+## [2.9.3] - [2018-07-26](https://github.com/react-navigation/react-navigation/releases/tag/2.9.3)
+### Added
+- Add `NavigationTestUtils` which can be imported by path to be used with jest snapshot testing.
+
+## [2.9.2] - [2018-07-25](https://github.com/react-navigation/react-navigation/releases/tag/2.9.2)
+### Added
+- Export `StackViewTransitionConfigs` to allow you to extend default config in custom transition configs. [#4761](https://github.com/react-navigation/react-navigation/pull/4761)
+
+### Fixed
+- Error when building with haul: ref to pathToRegexp.compile(#4658).
+- Error when building with haul: ref to pathToRegexp.compile. [#4658](https://github.com/react-navigation/react-navigation/pull/4658).
+
+## [2.9.1] - [2018-07-24](https://github.com/react-navigation/react-navigation/releases/tag/2.9.1)
+### Fixed
+- Incorrect parameters passed to title offset calculation led to bug in header layout when no right component (https://github.com/react-navigation/react-navigation/issues/4754)
+
+### Fixed
+- Typo in Header transition preset check.
+
 ## [2.9.0] - [2018-07-20](https://github.com/react-navigation/react-navigation/releases/tag/2.9.0)
 ### Added
 - `headerLayoutPreset: 'center' | 'left'` to provide an easy solution for [questions like this](https://github.com/react-navigation/react-navigation/issues/4615).
@@ -100,7 +127,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Changed
 - Improved examples
 
-[Unreleased]: https://github.com/react-navigation/react-navigation/compare/2.9.0...HEAD
+[Unreleased]: https://github.com/react-navigation/react-navigation/compare/2.10.0...HEAD
+[2.10.0]: https://github.com/react-navigation/react-navigation/compare/2.9.3...2.10.0
+[2.9.3]: https://github.com/react-navigation/react-navigation/compare/2.9.2...2.9.3
+[2.9.2]: https://github.com/react-navigation/react-navigation/compare/2.9.1...2.9.2
+[2.9.1]: https://github.com/react-navigation/react-navigation/compare/2.9.0...2.9.1
 [2.9.0]: https://github.com/react-navigation/react-navigation/compare/2.8.0...2.9.0
 [2.8.0]: https://github.com/react-navigation/react-navigation/compare/2.7.0...2.8.0
 [2.7.0]: https://github.com/react-navigation/react-navigation/compare/2.6.2...2.7.0
